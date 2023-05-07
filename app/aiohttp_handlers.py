@@ -17,12 +17,11 @@ async def execute_gather(*concurrency_tasks):
         async with semaphore:
             return await task
 
-    print(f"{datetime.utcnow()} - ", end='')
+    print(f"{datetime.utcnow()} -> ", end='')
     s = time.perf_counter()
     await asyncio.gather(*(semaphore_task(task) for task in concurrency_tasks))
     elapsed = time.perf_counter() - s
-    print(f"{datetime.utcnow()}")
-    print(elapsed)
+    print(f"{datetime.utcnow()} = {elapsed}")
 
 
 async def request_async(session: ClientSession, method, url, data, headers, result_handler=None):
