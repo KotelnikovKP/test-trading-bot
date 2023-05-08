@@ -26,7 +26,7 @@ async def schedule_event_handler():
         if symbols:
             requests = [
                 bybit.get_kline(category='linear', symbol=s.symbol, interval=1, limit='2')
-                for s in symbols.scalars()
+                for s in symbols
             ]
         else:
             requests = []
@@ -38,10 +38,15 @@ async def schedule_event_handler():
     )
     await conn.close()
 
+    iteration_stack.calculate_indicators(iteration)
+
+    iteration_stack.make_decision(iteration)
+
     await iteration.save_to_db(async_db_session)
 
 
 async def launch_scheduler_tasks():
+    await iteration_stack.get_kline_history(async_db_session)
     main_scheduler = AsyncScheduler()
     await main_scheduler.create_and_run_async_job(
         'schedule_event_handler',
