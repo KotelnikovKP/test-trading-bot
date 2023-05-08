@@ -11,12 +11,18 @@ from app.utils import ftod
 
 
 class Iteration:
+    """
+    Single iteration to store received kline data from exchange and expand them calculation indicators
+    """
     def __init__(self, time_kline: datetime):
         self._time_kline: datetime = time_kline
         self._symbols_kline: dict = dict()
 
     def add_kline(self, symbol_key: str, open_price: Decimal = 0.0, high_price: Decimal = 0.0, low_price: Decimal = 0.0,
                   close_price: Decimal = 0.0, volume: Decimal = 0.0, turnover: Decimal = 0.0) -> KlineHistory:
+        """
+        Add new kline with data to iteration from exchange
+        """
         kline = KlineHistory()
         kline.time_kline = self._time_kline
         kline.symbol_key = symbol_key
@@ -30,6 +36,9 @@ class Iteration:
         return kline
 
     def add_existing_kline(self, kline: KlineHistory) -> None:
+        """
+        Add existing in database kline to iteration
+        """
         self._symbols_kline[kline.symbol_key] = kline
 
     def __getitem__(self, item) -> KlineHistory:
@@ -47,14 +56,20 @@ class Iteration:
         return len(self._symbols_kline)
 
     async def save_to_db(self, async_db_session: async_sessionmaker) -> None:
+        """
+        Save kline in iteration to database
+        """
         async with async_db_session() as session:
             for symbol, kline in self._symbols_kline.items():
                 session.add(kline)
-                print(f'  {str(kline)}')
+                print(f'      {str(kline)}')
             await session.commit()
 
 
 class IterationStack:
+    """
+    Stack of iterations to store list of iterations with dynamically resizable
+    """
     __object = None
 
     def __new__(cls, *args, **kwargs):
@@ -71,6 +86,9 @@ class IterationStack:
         self.current_iteration: Optional[Iteration] = None
 
     async def get_kline_history(self, async_db_session: async_sessionmaker):
+        """
+        Fills the iteration stack with kline data from database when the program starts
+        """
         oldest_allowed_datetime = datetime.utcnow() - timedelta(minutes=TRACKING_PERIOD + 1)
         oldest_allowed_datetime = datetime(oldest_allowed_datetime.year, oldest_allowed_datetime.month,
                                            oldest_allowed_datetime.day, oldest_allowed_datetime.hour,
@@ -88,6 +106,9 @@ class IterationStack:
                 iteration.add_existing_kline(kline)
 
     def add_iteration(self, time_kline: datetime) -> Iteration:
+        """
+        Add new iteration when new schedule event starts
+        """
         iteration = Iteration(time_kline)
         self._iterations[time_kline] = iteration
         self.current_iteration = iteration
@@ -100,6 +121,10 @@ class IterationStack:
         return len(self._iterations)
 
     def request_result_handler(self, status: int, result: dict) -> None:
+        """
+        Handler of request results from exchange
+        Create new kline object in current iteration
+        """
         if not (200 <= status <= 299):
             return
 
@@ -122,6 +147,9 @@ class IterationStack:
             pass
 
     def garbage_collector(self) -> None:
+        """
+        Delete old iteration from stack
+        """
         oldest_allowed_datetime = datetime.utcnow() - timedelta(minutes=TRACKING_PERIOD + 5)
         oldest_allowed_datetime = datetime(oldest_allowed_datetime.year, oldest_allowed_datetime.month,
                                            oldest_allowed_datetime.day, oldest_allowed_datetime.hour,
@@ -133,7 +161,12 @@ class IterationStack:
     def _get_max_min_in_period(
             self, symbol_key: str, end_time: datetime
     ) -> tuple[Optional[Decimal], Optional[Decimal], Optional[Decimal], Optional[int],
-    Optional[Decimal], Optional[Decimal], Optional[Decimal], Optional[int]]:
+               Optional[Decimal], Optional[Decimal], Optional[Decimal], Optional[int]]:
+        """
+        Calculate indicators for kline
+        Use kline same symbol in previous iterations
+        """
+
         def minutes_diff(finish_time: datetime, start_time: datetime) -> int:
             return int((finish_time.timestamp() - start_time.timestamp()) / 60)
 
@@ -142,6 +175,7 @@ class IterationStack:
         max_price = delta_to_max = delta_to_max_in_percent = time_since_max = None
         min_price = delta_to_min = delta_to_min_in_percent = time_since_min = None
 
+        # Find current kline
         kline = None
         iter_time = end_time
         while kline is None and iter_time is not None:
@@ -153,6 +187,8 @@ class IterationStack:
                 iter_time = None
 
         if kline:
+
+            # Set initial values indicators from current kline
             current_price = kline.close_price
             max_price = kline.high_price
             delta_to_max = current_price - max_price
@@ -163,6 +199,7 @@ class IterationStack:
             delta_to_min_in_percent = delta_to_min / min_price
             time_since_min = minutes_diff(end_time, kline.time_kline)
 
+            # Calculate indicators using previous kline
             for time_kline, iteration in self._iterations.items():
                 if end_time - timedelta(minutes=TRACKING_PERIOD) <= time_kline <= end_time:
                     kline = iteration[symbol_key]
@@ -182,6 +219,10 @@ class IterationStack:
             min_price, delta_to_min, delta_to_min_in_percent, time_since_min
 
     def _get_btc_impact_rate(self, kline: KlineHistory, btc_kline: KlineHistory) -> Optional[Decimal]:
+        """
+        Calculate BTC impact
+        Use the linear deviation method
+        """
 
         def get_normal_value(value: Decimal, min_value: Decimal, max_value: Decimal) -> Decimal:
             return ftod((value - min_value) / (max_value - min_value), 9)
@@ -219,6 +260,9 @@ class IterationStack:
         return btc_impact_rate
 
     def calculate_indicators(self, iteration: Iteration) -> None:
+        """
+        Calculate indicators for each kline in iteration
+        """
         btc_symbol_key = 'BTCUSDT'
         btc_kline = iteration[btc_symbol_key]
         if btc_kline:
@@ -242,15 +286,23 @@ class IterationStack:
                     kline.btc_impact_rate = ftod(0.0, 9)
 
     def _announce_victory(self, kline: KlineHistory) -> None:
-        print('-------------------------------------------------------------------------------------------------------')
-        print(f'{datetime.utcnow()} УРА!!!')
+        """
+        Print success massage
+        """
+
+        print('  -----------------------------------------------------------------------------------------------------')
+        print(f'  {datetime.utcnow()} УРА!!!')
         if kline.is_growth_over_1_percent:
-            print(f"  Цена фьючерса {kline.symbol_key} выросла на {abs(kline.delta_to_min_in_percent) * 100:.2f} %")
+            print(f"      Цена фьючерса {kline.symbol_key} выросла на {abs(kline.delta_to_min_in_percent) * 100:.2f} %")
         if kline.is_decline_over_1_percent:
-            print(f"  Цена фьючерса {kline.symbol_key} упала на {abs(kline.delta_to_max_in_percent) * 100:.2f} %")
-        print('-------------------------------------------------------------------------------------------------------')
+            print(f"      Цена фьючерса {kline.symbol_key} упала на {abs(kline.delta_to_max_in_percent) * 100:.2f} %")
+        print('  -----------------------------------------------------------------------------------------------------')
 
     def make_decision(self, iteration: Iteration) -> None:
+        """
+        Make decision to achieve the goal for each kline in current iteration
+        In this case, about reaching the price change threshold without BTC impact
+        """
         for symbol_key, kline in iteration.symbols_kline.items():
             if abs(kline.delta_to_min_in_percent) >= ALARM_THRESHOLD and kline.btc_impact_rate <= BTC_IMPACT_THRESHOLD:
                 kline.is_growth_over_1_percent = True

@@ -29,6 +29,7 @@ def get_async_session():
 
 
 class Symbol(Base):
+
     __tablename__ = 'symbol'
 
     symbol: Mapped[str] = mapped_column(String(15), primary_key=True, index=True)
@@ -49,6 +50,7 @@ class Symbol(Base):
 
 
 class KlineHistory(Base):
+
     __tablename__ = 'kline_history'
 
     time_kline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
