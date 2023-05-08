@@ -225,7 +225,7 @@ class IterationStack:
         """
 
         def get_normal_value(value: Decimal, min_value: Decimal, max_value: Decimal) -> Decimal:
-            return ftod((value - min_value) / (max_value - min_value), 9)
+            return ftod((value - min_value) / (max_value - min_value), 9) if max_value > min_value else ftod(0.5, 9)
 
         end_time = datetime(year=kline.time_kline.year, month=kline.time_kline.month, day=kline.time_kline.day,
                             hour=kline.time_kline.hour, minute=kline.time_kline.minute, second=0, microsecond=0,

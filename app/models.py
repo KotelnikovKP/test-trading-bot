@@ -84,6 +84,6 @@ class KlineHistory(Base):
 
     def __str__(self):
         return f'{self.time_kline} - {self.symbol_key}: (' \
-               f'O={self.open_price}), H={self.high_price}), ' \
-               f'L={self.low_price}), C={self.close_price}), ' \
-               f'V={self.volume}), T={self.turnover})'
+               f'O={self.open_price}, H={self.high_price}, ' \
+               f'L={self.low_price}, C={self.close_price}, ' \
+               f'V={self.volume}, T={self.turnover})'
