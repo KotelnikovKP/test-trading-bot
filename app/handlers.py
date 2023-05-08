@@ -293,9 +293,13 @@ class IterationStack:
         print('  -----------------------------------------------------------------------------------------------------')
         print(f'  {datetime.utcnow()} УРА!!!')
         if kline.is_growth_over_1_percent:
-            print(f"      Цена фьючерса {kline.symbol_key} выросла на {abs(kline.delta_to_min_in_percent) * 100:.2f} %")
+            print(f"      Цена фьючерса {kline.symbol_key} "
+                  f"выросла на {abs(kline.delta_to_min_in_percent) * 100:.2f} % "
+                  f"за {kline.time_since_min} мин.")
         if kline.is_decline_over_1_percent:
-            print(f"      Цена фьючерса {kline.symbol_key} упала на {abs(kline.delta_to_max_in_percent) * 100:.2f} %")
+            print(f"      Цена фьючерса {kline.symbol_key} "
+                  f"упала на {abs(kline.delta_to_max_in_percent) * 100:.2f} % "
+                  f"за {kline.time_since_max} мин.")
         print('  -----------------------------------------------------------------------------------------------------')
 
     def make_decision(self, iteration: Iteration) -> None:
