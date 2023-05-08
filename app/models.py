@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List
 
-from sqlalchemy import String, Numeric, Boolean, DateTime, ForeignKey, PrimaryKeyConstraint
+from sqlalchemy import String, Numeric, Boolean, DateTime, ForeignKey, PrimaryKeyConstraint, Integer
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -51,8 +51,8 @@ class Symbol(Base):
 class KlineHistory(Base):
     __tablename__ = 'kline_history'
 
-    time_kline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    symbol_key: Mapped[str] = mapped_column(ForeignKey('symbol.symbol'), nullable=False)
+    time_kline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    symbol_key: Mapped[str] = mapped_column(ForeignKey('symbol.symbol'), nullable=False, index=True)
     symbol: Mapped['Symbol'] = relationship(back_populates='kline_history')
     open_price: Mapped[Decimal] = mapped_column(Numeric(19, 9), default=0.0, nullable=False)
     high_price: Mapped[Decimal] = mapped_column(Numeric(19, 9), default=0.0, nullable=False)
@@ -60,6 +60,21 @@ class KlineHistory(Base):
     close_price: Mapped[Decimal] = mapped_column(Numeric(19, 9), default=0.0, nullable=False)
     volume: Mapped[Decimal] = mapped_column(Numeric(19, 9), default=0.0, nullable=False)
     turnover: Mapped[Decimal] = mapped_column(Numeric(19, 9), default=0.0, nullable=False)
+
+    max_price: Mapped[Decimal] = mapped_column(Numeric(19, 9), nullable=True)
+    delta_to_max: Mapped[Decimal] = mapped_column(Numeric(19, 9), nullable=True)
+    delta_to_max_in_percent: Mapped[Decimal] = mapped_column(Numeric(19, 9), nullable=True)
+    time_since_max: Mapped[int] = mapped_column(Integer, nullable=True)
+
+    min_price: Mapped[Decimal] = mapped_column(Numeric(19, 9), nullable=True)
+    delta_to_min: Mapped[Decimal] = mapped_column(Numeric(19, 9), nullable=True)
+    delta_to_min_in_percent: Mapped[Decimal] = mapped_column(Numeric(19, 9), nullable=True)
+    time_since_min: Mapped[int] = mapped_column(Integer, nullable=True)
+
+    btc_impact_rate: Mapped[Decimal] = mapped_column(Numeric(19, 9), nullable=True)
+
+    is_growth_over_1_percent: Mapped[bool] = mapped_column(Boolean(), default=False)
+    is_decline_over_1_percent: Mapped[bool] = mapped_column(Boolean(), default=False)
 
     __table_args__ = (
         PrimaryKeyConstraint('symbol_key', 'time_kline', name='key_time'),

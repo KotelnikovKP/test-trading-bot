@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+from app.utils import ftod
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 dotenv_path = os.path.join(BASE_DIR, '.env')
@@ -50,4 +52,19 @@ try:
     TTL_DNS_CACHE = int(os.environ.get('TTL_DNS_CACHE'))
 except:
     TTL_DNS_CACHE = 300
+
+try:
+    TRACKING_PERIOD = int(os.environ.get('TRACKING_PERIOD'))
+except:
+    TRACKING_PERIOD = 60
+
+try:
+    ALARM_THRESHOLD = ftod(os.environ.get('ALARM_THRESHOLD'), 9)
+except:
+    ALARM_THRESHOLD = ftod(0.1, 9)
+
+try:
+    BTC_IMPACT_THRESHOLD = ftod(os.environ.get('BTC_IMPACT_THRESHOLD'), 9)
+except:
+    BTC_IMPACT_THRESHOLD = ftod(0.8, 9)
 
